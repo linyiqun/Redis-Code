@@ -10,6 +10,7 @@
  * Given that many times Redis Hashes are used to represent objects composed
  * of few fields, this is a very big win in terms of used memory.
  *
+ * zipmap压缩表和ziplist十分类似，都做到了内存操作效率比较高的
  * --------------------------------------------------------------------------
  *
  * Copyright (c) 2009-2010, Salvatore Sanfilippo <antirez at gmail dot com>
@@ -227,30 +228,36 @@ unsigned char *zipmapSet(unsigned char *zm, unsigned char *key, unsigned int kle
 
     freelen = reqlen;
     if (update) *update = 0;
+    //寻找key的位置
     p = zipmapLookupRaw(zm,key,klen,&zmlen);
     if (p == NULL) {
         /* Key not found: enlarge */
+        //key的位置没有找到，调整zipmap的大小，准备添加操作
         zm = zipmapResize(zm, zmlen+reqlen);
         p = zm+zmlen-1;
         zmlen = zmlen+reqlen;
 
         /* Increase zipmap length (this is an insert) */
+        //如果头字节还没有达到最大值，则递增
         if (zm[0] < ZIPMAP_BIGLEN) zm[0]++;
     } else {
         /* Key found. Is there enough space for the new value? */
         /* Compute the total length: */
         if (update) *update = 1;
+        //key的位置以及找到，判断是否有空间插入新的值
         freelen = zipmapRawEntryLength(p);
         if (freelen < reqlen) {
             /* Store the offset of this key within the current zipmap, so
              * it can be resized. Then, move the tail backwards so this
              * pair fits at the current position. */
+             //如果没有空间插入新的值，则调整大小
             offset = p-zm;
             zm = zipmapResize(zm, zmlen-freelen+reqlen);
             p = zm+offset;
 
             /* The +1 in the number of bytes to be moved is caused by the
              * end-of-zipmap byte. Note: the *original* zmlen is used. */
+            //移动空间以便增加新的值
             memmove(p+reqlen, p+freelen, zmlen-(offset+freelen+1));
             zmlen = zmlen-freelen+reqlen;
             freelen = reqlen;
@@ -277,10 +284,12 @@ unsigned char *zipmapSet(unsigned char *zm, unsigned char *key, unsigned int kle
 
     /* Just write the key + value and we are done. */
     /* Key: */
+    //定位到插入的位置，首先写入key值
     p += zipmapEncodeLength(p,klen);
     memcpy(p,key,klen);
     p += klen;
     /* Value: */
+    //key值后面是value值，再次写入
     p += zipmapEncodeLength(p,vlen);
     *p++ = vempty;
     memcpy(p,val,vlen);
@@ -289,12 +298,18 @@ unsigned char *zipmapSet(unsigned char *zm, unsigned char *key, unsigned int kle
 
 /* Remove the specified key. If 'deleted' is not NULL the pointed integer is
  * set to 0 if the key was not found, to 1 if it was found and deleted. */
+/* 删除某个key的记录 */
 unsigned char *zipmapDel(unsigned char *zm, unsigned char *key, unsigned int klen, int *deleted) {
     unsigned int zmlen, freelen;
+    //找到key的所在记录
     unsigned char *p = zipmapLookupRaw(zm,key,klen,&zmlen);
+    
     if (p) {
+    	//算出key的所占长度
         freelen = zipmapRawEntryLength(p);
+        //进行移动操作，把后面覆盖到移除的空间中
         memmove(p, p+freelen, zmlen-((p-zm)+freelen+1));
+        //重新调整大小
         zm = zipmapResize(zm, zmlen-freelen);
 
         /* Decrease zipmap length */
@@ -384,7 +399,9 @@ size_t zipmapBlobLen(unsigned char *zm) {
     return totlen;
 }
 
+/* 下面是将会使用到的测试程序 */
 #ifdef ZIPMAP_TEST_MAIN
+/* 输出的压缩图的具体信息，用于测试 */
 void zipmapRepr(unsigned char *p) {
     unsigned int l;
 
