@@ -29,6 +29,51 @@
 
 #include "redis.h"
 
+/* List方法 */
+/* list的操作分为2种，LINKEDLIST普通链表和ZIPLIST压缩列表的相关操作 */
+void listTypeTryConversion(robj *subject, robj *value) /* 判断是否需要将ziplist转为linkedlist */
+void listTypePush(robj *subject, robj *value, int where) /* 在头部或尾部插入value元素 */
+robj *listTypePop(robj *subject, int where)  /* 在列表的头部或尾弹出元素 */
+unsigned long listTypeLength(robj *subject) /* 列表的长度 */
+listTypeIterator *listTypeInitIterator(robj *subject, long index, unsigned char direction) /* 返回列表迭代器，方向有头尾之分 */
+void listTypeReleaseIterator(listTypeIterator *li) /* 释放列表迭代器 */
+int listTypeNext(listTypeIterator *li, listTypeEntry *entry) /* 根据列表迭代器，获取下一个元素 */
+robj *listTypeGet(listTypeEntry *entry) /* 获取listType元素，有ziplist和linkedlist */
+void listTypeInsert(listTypeEntry *entry, robj *value, int where) /* listType了类型插入元素操作 */
+int listTypeEqual(listTypeEntry *entry, robj *o) /* 判断2个元素是否相等 */
+void listTypeDelete(listTypeEntry *entry) /* listType类型删除元素 */
+void listTypeConvert(robj *subject, int enc) /* listType类型的转换操作，这里指的是往linkedList上转 */
+	
+/* List的相关命令 */
+void pushGenericCommand(redisClient *c, int where) /* 插入操作命令的原始操作 */
+void lpushCommand(redisClient *c) /* 左边插入元素命令 */
+void rpushCommand(redisClient *c) /* 右边插入元素命令 */
+void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) /* 有返回状态的插入操作命令，假设首先都是能够实现插入命令的 */
+void lpushxCommand(redisClient *c) /* 左边插入元素有返回消息的命令 */
+void rpushxCommand(redisClient *c) /* 右边插入元素有返回消息的命令 */
+void linsertCommand(redisClient *c) /* 列表指定位置插入元素操作命令 */
+void llenCommand(redisClient *c) /* 列表返回长度命令 */
+void lindexCommand(redisClient *c) /* 获取index位置的上的元素 */
+void lsetCommand(redisClient *c) /* listType类型设置value命令 */
+void popGenericCommand(redisClient *c, int where) /* 实现弹出操作的原始命令 */
+void lpopCommand(redisClient *c) /* 左边弹出元素命令 */
+void rpopCommand(redisClient *c) /* 右边弹出操作命令 */
+void lrangeCommand(redisClient *c) /* 移动listType位置操作 */
+void ltrimCommand(redisClient *c) /* listType实现截取操作，把多余范围的元素删除 */
+void lremCommand(redisClient *c) /* 移除在listType中出现的与指定的元素相等的元素 */
+void rpoplpushHandlePush(redisClient *c, robj *dstkey, robj *dstobj, robj *value) /* 元素从一个obj右边弹出，在从左侧推入另一个obj列表操作 */
+void rpoplpushCommand(redisClient *c) /* 右边弹出，左边推入元素的命令 */
+void blockForKeys(redisClient *c, robj **keys, int numkeys, time_t timeout, robj *target) >/* 设置客户端为阻塞模式，并设置超时时间，当请求特定的key元素时 */
+void unblockClientWaitingData(redisClient *c) /* 客户端解锁操作 */
+void signalListAsReady(redisDb *db, robj *key) /* 将key存入server中，后续可以用于客户端的存取 */
+int serveClientBlockedOnList(redisClient *receiver, robj *key, robj *dstkey, redisDb *db, robj *value, int where) /* 根据server，Client的key,value情况，判断server此时能否服务于Client，否则Client将被阻塞 */
+void handleClientsBlockedOnLists(void) /* 服务端解除阻塞住的Client */
+int getTimeoutFromObjectOrReply(redisClient *c, robj *object, time_t *timeout) /* 获取超时时间 */ 
+void blockingPopGenericCommand(redisClient *c, int where) /* 阻塞弹出命令的原始操作 */
+void blpopCommand(redisClient *c) /* 左边弹出数据的阻塞式命令 */
+void brpopCommand(redisClient *c) /* 右边弹出数据的阻塞式命令 */
+void brpoplpushCommand(redisClient *c) /* 弹出推入阻塞式命令 */
+
 /*-----------------------------------------------------------------------------
  * List API
  *----------------------------------------------------------------------------*/
@@ -152,6 +197,7 @@ int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
         entry->zi = li->zi;
         if (entry->zi != NULL) {
             if (li->direction == REDIS_TAIL)
+            	//根据方向调用pre或next的方法
                 li->zi = ziplistNext(li->subject->ptr,li->zi);
             else
                 li->zi = ziplistPrev(li->subject->ptr,li->zi);
@@ -161,6 +207,7 @@ int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
         entry->ln = li->ln;
         if (entry->ln != NULL) {
             if (li->direction == REDIS_TAIL)
+            	//普通的列表的调用方式同上
                 li->ln = li->ln->next;
             else
                 li->ln = li->ln->prev;
@@ -613,6 +660,7 @@ void ltrimCommand(redisClient *c) {
 
     /* Remove list elements to perform the trim */
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
+    	/* 划定范围的删除，分为2侧，左侧与右侧，剩下中间的部分 */
         o->ptr = ziplistDeleteRange(o->ptr,0,ltrim);
         o->ptr = ziplistDeleteRange(o->ptr,-rtrim,rtrim);
     } else if (o->encoding == REDIS_ENCODING_LINKEDLIST) {
@@ -772,29 +820,39 @@ void rpoplpushCommand(redisClient *c) {
 
 /* Set a client in blocking mode for the specified key, with the specified
  * timeout */
+/* 设置客户端为阻塞模式，并设置超时时间，当请求特定的key元素时 */
+/* 这个客户端阻塞的意思：当客户端请求list中某个特定key值时，如果key存在且列表非空，当然 */
+/* 当然不会阻塞，正常返回数据，如果当客户端请求某个key不存在，或列表为empty的时候，客户端将被阻塞 */
+/* 只有当有这个key被写入的时候，客户端才会被解锁 */		
 void blockForKeys(redisClient *c, robj **keys, int numkeys, time_t timeout, robj *target) {
     dictEntry *de;
     list *l;
     int j;
 
+    //设置超时时间
     c->bpop.timeout = timeout;
     c->bpop.target = target;
 
     if (target != NULL) incrRefCount(target);
 
     for (j = 0; j < numkeys; j++) {
+    	//下面为为找到的key上锁
         /* If the key already exists in the dict ignore it. */
+        //如果此时，某些key已经存在了，直接忽略
         if (dictAdd(c->bpop.keys,keys[j],NULL) != DICT_OK) continue;
         incrRefCount(keys[j]);
 
         /* And in the other "side", to map keys -> clients */
+        //根据key找到对于请求该key的客户端，也就是将要被阻塞的Client
         de = dictFind(c->db->blocking_keys,keys[j]);
         if (de == NULL) {
             int retval;
 
             /* For every key we take a list of clients blocked for it */
             l = listCreate();
+            //为c客户端添加一个阻塞的key
             retval = dictAdd(c->db->blocking_keys,keys[j],l);
+            //增加key的引用次数
             incrRefCount(keys[j]);
             redisAssertWithInfo(c,keys[j],retval == DICT_OK);
         } else {
@@ -804,7 +862,9 @@ void blockForKeys(redisClient *c, robj **keys, int numkeys, time_t timeout, robj
     }
 
     /* Mark the client as a blocked client */
+    /* 标记Client为阻塞的客户端 */
     c->flags |= REDIS_BLOCKED;
+    //服务端的阻塞客户端计数递增
     server.bpop_blocked_clients++;
 }
 
@@ -849,13 +909,16 @@ void unblockClientWaitingData(redisClient *c) {
  * made by a script or in the context of MULTI/EXEC.
  *
  * The list will be finally processed by handleClientsBlockedOnLists() */
+/* 将key存入server中，后续可以用于客户端的存取 */
 void signalListAsReady(redisDb *db, robj *key) {
     readyList *rl;
 
     /* No clients blocking for this key? No need to queue it. */
+    /* 如果没有客户端为此key所阻塞的，直接不添加 */
     if (dictFind(db->blocking_keys,key) == NULL) return;
 
     /* Key was already signaled? No need to queue it again. */
+    /* 如果key已经存在，不不要重复添加 */
     if (dictFind(db->ready_keys,key) != NULL) return;
 
     /* Ok, we need to queue this key into server.ready_keys. */
@@ -863,6 +926,7 @@ void signalListAsReady(redisDb *db, robj *key) {
     rl->key = key;
     rl->db = db;
     incrRefCount(key);
+    //添加到list列表尾部
     listAddNodeTail(server.ready_keys,rl);
 
     /* We also add the key in the db->ready_keys dictionary in order
@@ -959,6 +1023,7 @@ void handleClientsBlockedOnLists(void) {
          * locally. This way as we run the old list we are free to call
          * signalListAsReady() that may push new elements in server.ready_keys
          * when handling clients blocked into BRPOPLPUSH. */
+        //每次要刷新server中的readykey的最新的值
         l = server.ready_keys;
         server.ready_keys = listCreate();
 
@@ -982,7 +1047,8 @@ void handleClientsBlockedOnLists(void) {
                 if (de) {
                     list *clients = dictGetVal(de);
                     int numclients = listLength(clients);
-
+				
+				    //为numClient个客户端接触阻塞
                     while(numclients--) {
                         listNode *clientnode = listFirst(clients);
                         redisClient *receiver = clientnode->value;
@@ -1102,6 +1168,7 @@ void blockingPopGenericCommand(redisClient *c, int where) {
     }
 
     /* If the list is empty or the key does not exists we must block */
+    /* 阻塞操作在这里实现了 */
     blockForKeys(c, c->argv + 1, c->argc - 2, timeout, NULL);
 }
 
