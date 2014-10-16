@@ -47,6 +47,14 @@
 static char error[1024];
 static off_t epos;
 
+/* 方法API */
+int consumeNewline(char *buf) /* 消除buf前面的换行符，即比较buf字符串中的前2个字符 */
+int readLong(FILE *fp, char prefix, long *target) /* 从文件中读取long类型值 */
+int readBytes(FILE *fp, char *target, long length) /* 从文件中读取字节 */
+int readString(FILE *fp, char** target) /* 文件中读取字符串 */
+int readArgc(FILE *fp, long *target) /* 文件中读取参数,首字符以“*”开头 */
+off_t process(FILE *fp) /* 返回fp文件的偏移量 */
+	
 /* 消除buf前面的换行符，即比较buf字符串中的前2个字符 */
 int consumeNewline(char *buf) {
     if (strncmp(buf,"\r\n",2) != 0) {
