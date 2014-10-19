@@ -46,6 +46,7 @@ static int rdbWriteRaw(rio *rdb, void *p, size_t len) {
     return len;
 }
 
+/* 保存类型操作 */
 int rdbSaveType(rio *rdb, unsigned char type) {
     return rdbWriteRaw(rdb,&type,1);
 }
@@ -836,6 +837,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
         if ((o = rdbLoadEncodedStringObject(rdb)) == NULL) return NULL;
         o = tryObjectEncoding(o);
     } else if (rdbtype == REDIS_RDB_TYPE_LIST) {
+    	///根据不同类型加载按照不同的方式加载
         /* Read list value */
         if ((len = rdbLoadLen(rdb,NULL)) == REDIS_RDB_LENERR) return NULL;
 
@@ -859,6 +861,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
 
             if (o->encoding == REDIS_ENCODING_ZIPLIST) {
                 dec = getDecodedObject(ele);
+                //最后都会通过吧值赋在obj->ptr上
                 o->ptr = ziplistPush(o->ptr,dec->ptr,sdslen(dec->ptr),REDIS_TAIL);
                 decrRefCount(dec);
                 decrRefCount(ele);
@@ -891,6 +894,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
             if (o->encoding == REDIS_ENCODING_INTSET) {
                 /* Fetch integer value from element */
                 if (isObjectRepresentableAsLongLong(ele,&llval) == REDIS_OK) {
+                	//最后都会通过吧值赋在obj->ptr上
                     o->ptr = intsetAdd(o->ptr,llval,NULL);
                 } else {
                     setTypeConvert(o,REDIS_ENCODING_HT);
@@ -1090,10 +1094,12 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
 
 /* Mark that we are loading in the global state and setup the fields
  * needed to provide loading stats. */
+/* 做loading的初始化操作 */
 void startLoading(FILE *fp) {
     struct stat sb;
 
     /* Load the DB */
+    //服务端加载数据库
     server.loading = 1;
     server.loading_start_time = time(NULL);
     if (fstat(fileno(fp), &sb) == -1) {
@@ -1104,6 +1110,7 @@ void startLoading(FILE *fp) {
 }
 
 /* Refresh the loading progress info */
+/* 刷新加载进度 */
 void loadingProgress(off_t pos) {
     server.loading_loaded_bytes = pos;
     if (server.stat_peak_memory < zmalloc_used_memory())
@@ -1111,12 +1118,14 @@ void loadingProgress(off_t pos) {
 }
 
 /* Loading finished */
+/* 加载结束，改变服务端loading的状态 */
 void stopLoading(void) {
     server.loading = 0;
 }
 
 /* Track loading progress in order to serve client's from time to time
    and if needed calculate rdb checksum  */
+/* 实时更新loading加载进度的回调方法，有时需要检验校验和 */
 void rdbLoadProgressCallback(rio *r, const void *buf, size_t len) {
     if (server.rdb_checksum)
         rioGenericUpdateChecksum(r, buf, len);
@@ -1134,6 +1143,7 @@ void rdbLoadProgressCallback(rio *r, const void *buf, size_t len) {
     }
 }
 
+/* 加载rdb数据库文件 */
 int rdbLoad(char *filename) {
     uint32_t dbid;
     int type, rdbver;
@@ -1201,6 +1211,7 @@ int rdbLoad(char *filename) {
             continue;
         }
         /* Read key */
+        //读取key判断是否过期
         if ((key = rdbLoadStringObject(&rdb)) == NULL) goto eoferr;
         /* Read value */
         if ((val = rdbLoadObject(type,&rdb)) == NULL) goto eoferr;
@@ -1247,10 +1258,12 @@ eoferr: /* unexpected end of file is handled here with a fatal exit */
 }
 
 /* A background saving child (BGSAVE) terminated its work. Handle this. */
+/* 后台保存数据库操作完成后的处理方法 */
 void backgroundSaveDoneHandler(int exitcode, int bysignal) {
     if (!bysignal && exitcode == 0) {
         redisLog(REDIS_NOTICE,
             "Background saving terminated with success");
+        //服务端的改变最近一次的保存相关记录
         server.dirty = server.dirty - server.dirty_before_bgsave;
         server.lastsave = time(NULL);
         server.lastbgsave_status = REDIS_OK;
@@ -1271,6 +1284,8 @@ void backgroundSaveDoneHandler(int exitcode, int bysignal) {
         if (bysignal != SIGUSR1)
             server.lastbgsave_status = REDIS_ERR;
     }
+    
+    //子线程执行完毕了，再恢复到id为-1代表无子线程存在了
     server.rdb_child_pid = -1;
     server.rdb_save_time_last = time(NULL)-server.rdb_save_time_start;
     server.rdb_save_time_start = -1;
@@ -1279,6 +1294,7 @@ void backgroundSaveDoneHandler(int exitcode, int bysignal) {
     updateSlavesWaitingBgsave((!bysignal && exitcode == 0) ? REDIS_OK : REDIS_ERR);
 }
 
+/* 将保存操作封装成命令的形式 */
 void saveCommand(redisClient *c) {
     if (server.rdb_child_pid != -1) {
         addReplyError(c,"Background save already in progress");
@@ -1291,6 +1307,7 @@ void saveCommand(redisClient *c) {
     }
 }
 
+/* 将后台保存数据库操作封装成命令的模式 */
 void bgsaveCommand(redisClient *c) {
     if (server.rdb_child_pid != -1) {
         addReplyError(c,"Background save already in progress");
