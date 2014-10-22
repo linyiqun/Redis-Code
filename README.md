@@ -20,7 +20,7 @@ struct:（结构体）
 8.t_string.c string在Server/Client中的应答操作。主要通过redisObject进行类型转换。
 9.t_zset.c zset在Server/Client中的应答操作。主要通过redisObject进行类型转换。
 10.ziplist.c  ziplist是一个类似于list的存储对象。它的原理类似于zipmap。
-11.zipmap.c  zipmap是一个类似于hash的存储对象。
+11.zipmap.c  zipmap是一个类似于hash的存储对象。 
 
 data:（数据操作）
 1.aof.c 全称为append only file，作用就是记录每次的写操作,在遇到断电等问题时可以用它来恢复数据库状态。
