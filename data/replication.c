@@ -41,45 +41,44 @@ void replicationDiscardCachedMaster(void);
 void replicationResurrectCachedMaster(int newfd);
 
 /* ---------------------------------- MASTER -------------------------------- */
-void createReplicationBacklog(void)
-void resizeReplicationBacklog(long long newsize)
-void freeReplicationBacklog(void)
-void feedReplicationBacklog(void *ptr, size_t len)
-void feedReplicationBacklogWithObject(robj *o)
-void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc)
-void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **argv, int argc)
-long long addReplyReplicationBacklog(redisClient *c, long long offset)
-int masterTryPartialResynchronization(redisClient *c)
-void syncCommand(redisClient *c)
-void replconfCommand(redisClient *c)
-void sendBulkToSlave(aeEventLoop *el, int fd, void *privdata, int mask)
-void updateSlavesWaitingBgsave(int bgsaveerr)
+void createReplicationBacklog(void) /* 创建backlog的buffer */
+void resizeReplicationBacklog(long long newsize) /* 调整复制备份日志的大小，当replication backlog被修改的时候 */
+void freeReplicationBacklog(void) /* 释放备份日志 */
+void feedReplicationBacklog(void *ptr, size_t len) /* 往备份日志中添加添加数据操作，会引起master_repl_offset偏移量的增加 */
+void feedReplicationBacklogWithObject(robj *o) /* 往backlog添加数据，以Redis 字符串对象作为参数 */
+void replicationFeedSlaves(list *slaves, int dictid, robj **argv, int argc) /* 将主数据库复制到从数据库 */
+void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **argv, int argc) /* 发送数据给monitor监听者客户端 */
+long long addReplyReplicationBacklog(redisClient *c, long long offset) /* slave从客户单添加备份日志 */
+int masterTryPartialResynchronization(redisClient *c) /* 主数据库尝试分区同步 */
+void syncCommand(redisClient *c) /* 同步命令函数 */
+void replconfCommand(redisClient *c) /* 此函数用于从客户端进行配置复制进程中的执行参数设置 */
+void sendBulkToSlave(aeEventLoop *el, int fd, void *privdata, int mask) /* 给slave客户端发送BULK数据 */
+void updateSlavesWaitingBgsave(int bgsaveerr) /* 此方法将用于后台保存进程快结束时调用，更新slave从客户端 */
 	
-
 /* ----------------------------------- SLAVE -------------------------------- */
-void replicationAbortSyncTransfer(void)
-void replicationSendNewlineToMaster(void)
-void replicationEmptyDbCallback(void *privdata)
-void readSyncBulkPayload(aeEventLoop *el, int fd, void *privdata, int mask)
-char *sendSynchronousCommand(int fd, ...)
-int slaveTryPartialResynchronization(int fd)
-void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask)
-int connectWithMaster(void)
-void undoConnectWithMaster(void)
-int cancelReplicationHandshake(void)
-void replicationSetMaster(char *ip, int port)
+void replicationAbortSyncTransfer(void) /* 中止与master主数据的同步操作 */
+void replicationSendNewlineToMaster(void) /* 从客户端发送空行给主客户端，破坏了原本的协议格式，避免让主客户端检测出从客户端超时的情况 */
+void replicationEmptyDbCallback(void *privdata) /* 清空数据库后的回调方法，当老数据被刷新出去之后等待加载新数据的时候调用 */
+void readSyncBulkPayload(aeEventLoop *el, int fd, void *privdata, int mask) /* 从客户端读取同步的Sync的BULK数据 */
+char *sendSynchronousCommand(int fd, ...) /* 从客户端发送给主客户端同步数据的命令，附上验证信息，和一些参数配置信息 */
+int slaveTryPartialResynchronization(int fd) /* 从客户端尝试分区同步操作 */
+void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) /* 与主客户端保持同步，期间包括端口号等的确认，socket连接 */
+int connectWithMaster(void) /* 连接主客户端 */
+void undoConnectWithMaster(void) /* 撤销连接主客户端 */
+int cancelReplicationHandshake(void) /* 当已经存在一个复制进程时，中止一个非阻塞的replication复制的尝试 */
+void replicationSetMaster(char *ip, int port) /* 设定主客户端的ip地址和端口号 */
 void replicationUnsetMaster(void)
 void slaveofCommand(redisClient *c)
 void roleCommand(redisClient *c)
-void replicationSendAck(void)
+void replicationSendAck(void) /* 发送ACK包给主客户端 ，告知当前的进程偏移量 */
 	
 /* ---------------------- MASTER CACHING FOR PSYNC -------------------------- */
-void replicationCacheMaster(redisClient *c)
-void replicationDiscardCachedMaster(void)
-void replicationResurrectCachedMaster(int newfd)
+void replicationCacheMaster(redisClient *c) /* 缓存客户端信息 */
+void replicationDiscardCachedMaster(void) /* 当某个客户端将不会再回复的时候，可以释放掉缓存的主客户端 */
+void replicationResurrectCachedMaster(int newfd) /* 将缓存客户端复活 */
 	
 /* ------------------------- MIN-SLAVES-TO-WRITE  --------------------------- */
-void refreshGoodSlavesCount(void)
+void refreshGoodSlavesCount(void) /* 更新slave从客户端数量 */
 void replicationScriptCacheInit(void)
 void replicationScriptCacheFlush(void)
 void replicationScriptCacheAdd(sds sha1)
@@ -88,7 +87,7 @@ void replicationCron(void)
 	
 /* ---------------------------------- MASTER -------------------------------- */
 /* 创建backlog的buffer */
-void createReplicationBacklog(void) {
+void createReplicationBacklog(void){
     redisAssert(server.repl_backlog == NULL);
     server.repl_backlog = zmalloc(server.repl_backlog_size);
     server.repl_backlog_histlen = 0;
@@ -335,7 +334,7 @@ void replicationFeedMonitors(redisClient *c, list *monitors, int dictid, robj **
 
 /* Feed the slave 'c' with the replication backlog starting from the
  * specified 'offset' up to the end of the backlog. */
-/* 我slave从客户单添加备份日志 */
+/* slave从客户单添加备份日志 */
 long long addReplyReplicationBacklog(redisClient *c, long long offset) {
     long long j, skip, len;
 
@@ -1091,6 +1090,7 @@ int slaveTryPartialResynchronization(int fd) {
     return PSYNC_NOT_SUPPORTED;
 }
 
+/* 与主客户端保持同步，期间包括端口号等的确认，socket连接 */
 void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
     char tmpfile[256], *err;
     int dfd, maxtries = 5;
@@ -1108,6 +1108,7 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 
     /* Check for errors in the socket. */
+    /* socket连接是否正常 */
     if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &errlen) == -1)
         sockerr = errno;
     if (sockerr) {
@@ -1121,6 +1122,7 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
      * make sure the master is able to reply before going into the actual
      * replication process where we have long timeouts in the order of
      * seconds (in the meantime the slave would block). */
+    /* 连接测试，将由主客户端发送PING命令给从客户端，在给定的延迟时间内观察是否有回复 */
     if (server.repl_state == REDIS_REPL_CONNECTING) {
         redisLog(REDIS_NOTICE,"Non blocking connect for SYNC fired the event.");
         /* Delete the writable event so that the readable event remains
@@ -1129,11 +1131,13 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
         server.repl_state = REDIS_REPL_RECEIVE_PONG;
         /* Send the PING, don't check for errors at all, we have the timeout
          * that will take care about this. */
+        //发送PING命令
         syncWrite(fd,"PING\r\n",6,100);
         return;
     }
 
     /* Receive the PONG command. */
+    //收到回复了
     if (server.repl_state == REDIS_REPL_RECEIVE_PONG) {
         char buf[1024];
 
@@ -1170,6 +1174,7 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 
     /* AUTH with the master if required. */
+    //auth身份验证
     if(server.masterauth) {
         err = sendSynchronousCommand(fd,"AUTH",server.masterauth,NULL);
         if (err[0] == '-') {
@@ -1182,6 +1187,7 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
 
     /* Set the slave port, so that Master's INFO command can list the
      * slave listening port correctly. */
+    /* 设置从客户端监听端口 */
     {
         sds port = sdsfromlonglong(server.port);
         err = sendSynchronousCommand(fd,"REPLCONF","listening-port",port,
@@ -1257,9 +1263,11 @@ error:
     return;
 }
 
+/* 连接主客户端 */
 int connectWithMaster(void) {
     int fd;
-
+	
+	//尝试非阻塞的TCP连接
     fd = anetTcpNonBlockConnect(NULL,server.masterhost,server.masterport);
     if (fd == -1) {
         redisLog(REDIS_WARNING,"Unable to connect to MASTER: %s",
@@ -1268,7 +1276,7 @@ int connectWithMaster(void) {
     }
 
     if (aeCreateFileEvent(server.el,fd,AE_READABLE|AE_WRITABLE,syncWithMaster,NULL) ==
-            AE_ERR)
+            AE_ERR)    
     {
         close(fd);
         redisLog(REDIS_WARNING,"Can't create readable event for SYNC");
@@ -1283,6 +1291,7 @@ int connectWithMaster(void) {
 
 /* This function can be called when a non blocking connection is currently
  * in progress to undo it. */
+/* 撤销连接主客户端 */
 void undoConnectWithMaster(void) {
     int fd = server.repl_transfer_s;
 
@@ -1302,12 +1311,14 @@ void undoConnectWithMaster(void) {
  * the replication state (server.repl_state) set to REDIS_REPL_CONNECT.
  *
  * Otherwise zero is returned and no operation is perforemd at all. */
+/* 当已经存在一个复制进程时，中止一个非阻塞的replication复制的尝试 */
 int cancelReplicationHandshake(void) {
     if (server.repl_state == REDIS_REPL_TRANSFER) {
         replicationAbortSyncTransfer();
     } else if (server.repl_state == REDIS_REPL_CONNECTING ||
              server.repl_state == REDIS_REPL_RECEIVE_PONG)
     {
+    	//并且取消连接
         undoConnectWithMaster();
     } else {
         return 0;
@@ -1316,10 +1327,12 @@ int cancelReplicationHandshake(void) {
 }
 
 /* Set replication to the specified master address and port. */
+/* 设定主客户端的ip地址和端口号 */
 void replicationSetMaster(char *ip, int port) {
     sdsfree(server.masterhost);
     server.masterhost = sdsdup(ip);
     server.masterport = port;
+    //设置完毕之后，断开所有的连接，中止replication进程
     if (server.master) freeClient(server.master);
     disconnectSlaves(); /* Force our slaves to resync with us as well. */
     replicationDiscardCachedMaster(); /* Don't try a PSYNC. */
@@ -1431,6 +1444,7 @@ void roleCommand(redisClient *c) {
 /* Send a REPLCONF ACK command to the master to inform it about the current
  * processed offset. If we are not connected with a master, the command has
  * no effects. */
+/* 发送ACK包给主客户端 ，告知当前的进程偏移量 */
 void replicationSendAck(void) {
     redisClient *c = server.master;
 
@@ -1464,6 +1478,7 @@ void replicationSendAck(void) {
  * replicationResurrectCachedMaster() that is used after a successful PSYNC
  * handshake in order to reactivate the cached master.
  */
+/* 缓存客户端信息 */
 void replicationCacheMaster(redisClient *c) {
     listNode *ln;
 
@@ -1472,16 +1487,19 @@ void replicationCacheMaster(redisClient *c) {
 
     /* Remove from the list of clients, we don't want this client to be
      * listed by CLIENT LIST or processed in any way by batch operations. */
+    //首先移除此客户端
     ln = listSearchKey(server.clients,c);
     redisAssert(ln != NULL);
     listDelNode(server.clients,ln);
 
     /* Save the master. Server.master will be set to null later by
      * replicationHandleMasterDisconnection(). */
+    //保存为缓存客户端
     server.cached_master = server.master;
 
     /* Remove the event handlers and close the socket. We'll later reuse
      * the socket of the new connection with the master during PSYNC. */
+    //删除在这个客户端上的读写事件
     aeDeleteFileEvent(server.el,c->fd,AE_READABLE);
     aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
     close(c->fd);
@@ -1503,12 +1521,15 @@ void replicationCacheMaster(redisClient *c) {
 
 /* Free a cached master, called when there are no longer the conditions for
  * a partial resync on reconnection. */
+/* 当某个客户端将不会再回复的时候，可以释放掉缓存的主客户端 */
 void replicationDiscardCachedMaster(void) {
     if (server.cached_master == NULL) return;
 
     redisLog(REDIS_NOTICE,"Discarding previously cached master state.");
     server.cached_master->flags &= ~REDIS_MASTER;
+    //直接释放客户端
     freeClient(server.cached_master);
+    //server的缓存客户端赋值为NULL
     server.cached_master = NULL;
 }
 
@@ -1518,7 +1539,9 @@ void replicationDiscardCachedMaster(void) {
  * This funciton is called when successfully setup a partial resynchronization
  * so the stream of data that we'll receive will start from were this
  * master left. */
+/* 将缓存客户端复活 */
 void replicationResurrectCachedMaster(int newfd) {
+	//将cached_master赋值为主客户端
     server.master = server.cached_master;
     server.cached_master = NULL;
     server.master->fd = newfd;
@@ -1528,6 +1551,7 @@ void replicationResurrectCachedMaster(int newfd) {
     server.repl_state = REDIS_REPL_CONNECTED;
 
     /* Re-add to the list of clients. */
+    //重新添加入客户端列表中
     listAddNodeTail(server.clients,server.master);
     if (aeCreateFileEvent(server.el, newfd, AE_READABLE,
                           readQueryFromClient, server.master)) {
@@ -1551,6 +1575,7 @@ void replicationResurrectCachedMaster(int newfd) {
 /* This function counts the number of slaves with lag <= min-slaves-max-lag.
  * If the option is active, the server will prevent writes if there are not
  * enough connected slaves with the specified lag (or less). */
+/* 更新slave从客户端数量 */
 void refreshGoodSlavesCount(void) {
     listIter li;
     listNode *ln;
@@ -1658,6 +1683,7 @@ int replicationScriptCacheExists(sds sha1) {
 
 /* Replication cron funciton, called 1 time per second. */
 void replicationCron(void) {
+	//判断是否超时
     /* Non blocking connection timeout? */
     if (server.masterhost &&
         (server.repl_state == REDIS_REPL_CONNECTING ||
@@ -1698,6 +1724,7 @@ void replicationCron(void) {
      * support PSYNC and replication offsets. */
     if (server.masterhost && server.master &&
         !(server.master->flags & REDIS_PRE_PSYNC))
+        //实时发送ACK包，更新当前进度
         replicationSendAck();
 
     /* If we have attached slaves, PING them from time to time.
