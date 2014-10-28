@@ -42,74 +42,74 @@ size_t zmalloc_size_sds(sds s) {
 }
 
 /* ------------ API ---------------------- */
-void *dupClientReplyValue(void *o)	
-int listMatchObjects(void *a, void *b)
-robj *dupLastObjectIfNeeded(list *reply)	
-void copyClientOutputBuffer(redisClient *dst, redisClient *src)
-static void acceptCommonHandler(int fd, int flags)
+void *dupClientReplyValue(void *o)	/* 复制value一份 */
+int listMatchObjects(void *a, void *b) /* 比价2个obj是否相等 */
+robj *dupLastObjectIfNeeded(list *reply) /* 返回回复列表中最后一个元素对象 */
+void copyClientOutputBuffer(redisClient *dst, redisClient *src) /* 将源Client的输出buffer复制给目标Client */
+static void acceptCommonHandler(int fd, int flags) /* 网络连接后的调用方法 */
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask)
 void acceptUnixHandler(aeEventLoop *el, int fd, void *privdata, int mask)
-void disconnectSlaves(void)
+void disconnectSlaves(void) /* 使server的slave失去连接 */
 void replicationHandleMasterDisconnection(void)
-void flushSlavesOutputBuffers(void)
+void flushSlavesOutputBuffers(void) /* 从方法将会在freeMemoryIfNeeded()，释放内存空间函数，将存在内存中数据操作结果刷新到磁盘中 */
 int processEventsWhileBlocked(void)
 
 /* ------------- addReply API -----------------   */
-int _addReplyToBuffer(redisClient *c, char *s, size_t len)
-void _addReplyObjectToList(redisClient *c, robj *o)
-void _addReplySdsToList(redisClient *c, sds s)
-void _addReplyStringToList(redisClient *c, char *s, size_t len)
-void addReply(redisClient *c, robj *obj)
-void addReplySds(redisClient *c, sds s)
+int _addReplyToBuffer(redisClient *c, char *s, size_t len) /* 往客户端缓冲区中添加内容 */
+void _addReplyObjectToList(redisClient *c, robj *o) /* robj添加到reply的列表中 */
+void _addReplySdsToList(redisClient *c, sds s) /* 在回复列表中添加Sds字符串对象 */
+void _addReplyStringToList(redisClient *c, char *s, size_t len) /* 在回复列表中添加字符串对象,参数中已经给定字符的长度 */
+void addReply(redisClient *c, robj *obj) /* 在redisClient的buffer中写入数据，数据存在obj->ptr的指针中 */
+void addReplySds(redisClient *c, sds s) /* 在回复中添加Sds字符串,下面的额addReply()系列方法原理基本类似 */
 void addReplyString(redisClient *c, char *s, size_t len)
 void addReplyErrorLength(redisClient *c, char *s, size_t len)
-void addReplyError(redisClient *c, char *err)
+void addReplyError(redisClient *c, char *err) /* 往Reply中添加error类的信息 */
 void addReplyErrorFormat(redisClient *c, const char *fmt, ...)
 void addReplyStatusLength(redisClient *c, char *s, size_t len)
 void addReplyStatus(redisClient *c, char *status)
 void addReplyStatusFormat(redisClient *c, const char *fmt, ...)
-void *addDeferredMultiBulkLength(redisClient *c)
+void *addDeferredMultiBulkLength(redisClient *c) /* 在reply list 中添加一个空的obj对象 */
 void setDeferredMultiBulkLength(redisClient *c, void *node, long length)
-void addReplyDouble(redisClient *c, double d)
+void addReplyDouble(redisClient *c, double d) /* 在bulk reply中添加一个double类型值，bulk的意思为大块的，bulk reply的意思为大数据量的回复 */
 void addReplyLongLongWithPrefix(redisClient *c, long long ll, char prefix)
 void addReplyLongLong(redisClient *c, long long ll)
 void addReplyMultiBulkLen(redisClient *c, long length)
-void addReplyBulkLen(redisClient *c, robj *obj)
-void addReplyBulk(redisClient *c, robj *obj)
+void addReplyBulkLen(redisClient *c, robj *obj) /* 添加bulk 大块的数据的长度 */
+void addReplyBulk(redisClient *c, robj *obj) /* 将一个obj的数据，拆分成大块数据的添加 */
 void addReplyBulkCBuffer(redisClient *c, void *p, size_t len)
 void addReplyBulkCString(redisClient *c, char *s)
 void addReplyBulkLongLong(redisClient *c, long long ll)
 
 /* ------------- Client API -----------------   */	
-redisClient *createClient(int fd)
-int prepareClientToWrite(redisClient *c)
+redisClient *createClient(int fd) /* 创建redisClient客户端，1.建立连接，2.设置数据库，3.属性设置 */
+int prepareClientToWrite(redisClient *c) /* 此方法将会被调用于Client准备接受新数据之前调用，在fileEvent为客户端设定writer的handler处理事件 */
 static void freeClientArgv(redisClient *c)
-void freeClient(redisClient *c)
+void freeClient(redisClient *c) /* 释放freeClient，要分为Master和Slave2种情况作不同的处理 */
 void freeClientAsync(redisClient *c)
-void freeClientsInAsyncFreeQueue(void)
-void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask)
+void freeClientsInAsyncFreeQueue(void) /* 异步的free客户端 */
+void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) /* 将Client中的reply数据存入文件中 */
 void resetClient(redisClient *c)
-int processInlineBuffer(redisClient *c)
+int processInlineBuffer(redisClient *c) /* 处理redis Client的内链的buffer，就是c->querybuf */
 static void setProtocolError(redisClient *c, int pos)
-int processMultibulkBuffer(redisClient *c)
-void processInputBuffer(redisClient *c)
-void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask)
+int processMultibulkBuffer(redisClient *c) /* 处理大块的buffer */
+void processInputBuffer(redisClient *c) /* 处理redisClient的查询buffer */
+void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) /* 从Client获取查询query语句 */
 void getClientsMaxBuffers(unsigned long *longest_output_list,
-                          unsigned long *biggest_input_buffer)
-void formatPeerId(char *peerid, size_t peerid_len, char *ip, int port)
-int genClientPeerId(redisClient *client, char *peerid, size_t peerid_len)
-char *getClientPeerId(redisClient *c)
-sds catClientInfoString(sds s, redisClient *client)
-sds getAllClientsInfoString(void)
-void clientCommand(redisClient *c)
-void rewriteClientCommandVector(redisClient *c, int argc, ...)
-void rewriteClientCommandArgument(redisClient *c, int i, robj *newval)
-unsigned long getClientOutputBufferMemoryUsage(redisClient *c)
+                          unsigned long *biggest_input_buffer) /* 获取Client中输入buffer和输出buffer的最大长度值 */
+void formatPeerId(char *peerid, size_t peerid_len, char *ip, int port) /* 格式化ip,port端口号的输出，ip:port */
+int genClientPeerId(redisClient *client, char *peerid, size_t peerid_len) /* 获取Client客户端的ip,port地址信息 */
+char *getClientPeerId(redisClient *c) /* 获取c->peerid客户端的地址信息 */
+sds catClientInfoString(sds s, redisClient *client) /* 格式化的输出客户端的属性信息，直接返回一个拼接好的字符串 */
+sds getAllClientsInfoString(void) /* 获取所有Client客户端的属性信息，并连接成一个总的字符串并输出 */
+void clientCommand(redisClient *c) /* 执行客户端的命令的作法 */
+void rewriteClientCommandVector(redisClient *c, int argc, ...) /* 重写客户端的命令集合，旧的命令集合的应用计数减1，新的Command  Vector的命令集合增1 */
+void rewriteClientCommandArgument(redisClient *c, int i, robj *newval) /* 重写Client中的第i个参数 */
+unsigned long getClientOutputBufferMemoryUsage(redisClient *c) /* 获取Client中已经用去的输出buffer的大小 */
 int getClientType(redisClient *c)
-int getClientTypeByName(char *name)
+int getClientTypeByName(char *name) /* Client中的名字的3种类型，normal,slave，pubsub */
 char *getClientTypeName(int class)
-int checkClientOutputBufferLimits(redisClient *c)
-void asyncCloseClientOnOutputBufferLimitReached(redisClient *c)
+int checkClientOutputBufferLimits(redisClient *c) /* 判断Clint的输出缓冲区的已经占用大小是否超过软限制或是硬限制 */
+void asyncCloseClientOnOutputBufferLimitReached(redisClient *c) /* 异步的关闭Client，如果缓冲区中的软限制或是硬限制已经到达的时候，缓冲区超出限制的结果会导致释放不安全， */
 
 /* 复制value一份 */
 void *dupClientReplyValue(void *o) {
@@ -882,7 +882,7 @@ void freeClientsInAsyncFreeQueue(void) {
     }
 }
 
-/* 将Client中的reply数据发送出去 */
+/* 将Client中的reply数据存入文件中 */
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = privdata;
     int nwritten = 0, totwritten = 0, objlen;
@@ -1107,6 +1107,7 @@ int processMultibulkBuffer(redisClient *c) {
                 if (sdslen(c->querybuf) > REDIS_INLINE_MAX_SIZE) {
                     addReplyError(c,
                         "Protocol error: too big bulk count string");
+                    //设置协议错误
                     setProtocolError(c,0);
                     return REDIS_ERR;
                 }
@@ -1190,6 +1191,7 @@ int processMultibulkBuffer(redisClient *c) {
     return REDIS_ERR;
 }
 
+/* 处理redisClient的查询buffer */
 void processInputBuffer(redisClient *c) {
     /* Keep processing while there is something in the input buffer */
     while(sdslen(c->querybuf)) {
@@ -1209,7 +1211,8 @@ void processInputBuffer(redisClient *c) {
                 c->reqtype = REDIS_REQ_INLINE;
             }
         }
-
+		
+		//根据Request请求的Type的不同，调度不同的处理方法
         if (c->reqtype == REDIS_REQ_INLINE) {
             if (processInlineBuffer(c) != REDIS_OK) break;
         } else if (c->reqtype == REDIS_REQ_MULTIBULK) {
@@ -1229,6 +1232,7 @@ void processInputBuffer(redisClient *c) {
     }
 }
 
+/* 从Client获取查询query语句 */
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = (redisClient*) privdata;
     int nread, readlen;
@@ -1255,6 +1259,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     qblen = sdslen(c->querybuf);
     if (c->querybuf_peak < qblen) c->querybuf_peak = qblen;
     c->querybuf = sdsMakeRoomFor(c->querybuf, readlen);
+    //从fd的文件描述符中读取查询buf到c->querybuf
     nread = read(fd, c->querybuf+qblen, readlen);
     if (nread == -1) {
         if (errno == EAGAIN) {
@@ -1291,6 +1296,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     server.current_client = NULL;
 }
 
+/* 获取Client中输入buffer和输出buffer的最大长度值 */
 void getClientsMaxBuffers(unsigned long *longest_output_list,
                           unsigned long *biggest_input_buffer) {
     redisClient *c;
@@ -1301,9 +1307,10 @@ void getClientsMaxBuffers(unsigned long *longest_output_list,
     listRewind(server.clients,&li);
     while ((ln = listNext(&li)) != NULL) {
         c = listNodeValue(ln);
-
-        if (listLength(c->reply) > lol) lol = listLength(c->reply);
-        if (sdslen(c->querybuf) > bib) bib = sdslen(c->querybuf);
+		
+		//通过遍历比较，算出最大值
+        if (listLength(c->reply) > lol) lol = listLength(c->reply);   //输出buffer的最大值
+        if (sdslen(c->querybuf) > bib) bib = sdslen(c->querybuf);   //输入的buffer即查询的buffer
     }
     *longest_output_list = lol;
     *biggest_input_buffer = bib;
@@ -1313,6 +1320,7 @@ void getClientsMaxBuffers(unsigned long *longest_output_list,
  * It writes the specified ip/port to "peerid" as a null termiated string
  * in the form ip:port if ip does not contain ":" itself, otherwise
  * [ip]:port format is used (for IPv6 addresses basically). */
+/* 格式化ip,port端口号的输出，ip:port */
 void formatPeerId(char *peerid, size_t peerid_len, char *ip, int port) {
     if (strchr(ip,':'))
         snprintf(peerid,peerid_len,"[%s]:%d",ip,port);
@@ -1333,6 +1341,7 @@ void formatPeerId(char *peerid, size_t peerid_len, char *ip, int port) {
  * On failure the function still populates 'peerid' with the "?:0" string
  * in case you want to relax error checking or need to display something
  * anyway (see anetPeerToString implementation for more info). */
+/* 获取Client客户端的ip,port地址信息 */
 int genClientPeerId(redisClient *client, char *peerid, size_t peerid_len) {
     char ip[REDIS_IP_STR_LEN];
     int port;
@@ -1353,6 +1362,7 @@ int genClientPeerId(redisClient *client, char *peerid, size_t peerid_len) {
  * if client->perrid is NULL, otherwise returning the cached value.
  * The Peer ID never changes during the life of the client, however it
  * is expensive to compute. */
+/* 获取c->peerid客户端的地址信息 */
 char *getClientPeerId(redisClient *c) {
     char peerid[REDIS_PEER_ID_LEN];
 
@@ -1365,6 +1375,7 @@ char *getClientPeerId(redisClient *c) {
 
 /* Concatenate a string representing the state of a client in an human
  * readable format, into the sds string 's'. */
+/* 格式化的输出客户端的属性信息，直接返回一个拼接好的字符串 */
 sds catClientInfoString(sds s, redisClient *client) {
     char flags[16], events[3], *p;
     int emask;
@@ -1392,6 +1403,8 @@ sds catClientInfoString(sds s, redisClient *client) {
     if (emask & AE_READABLE) *p++ = 'r';
     if (emask & AE_WRITABLE) *p++ = 'w';
     *p = '\0';
+    
+    //最后格式化输出结果
     return sdscatfmt(s,
         "id=%U addr=%s fd=%i name=%s age=%I idle=%I flags=%s db=%i sub=%i psub=%i multi=%i qbuf=%U qbuf-free=%U obl=%U oll=%U omem=%U events=%s cmd=%s",
         (unsigned long long) client->id,
@@ -1414,27 +1427,32 @@ sds catClientInfoString(sds s, redisClient *client) {
         client->lastcmd ? client->lastcmd->name : "NULL");
 }
 
+/* 获取所有Client客户端的属性信息，并连接成一个总的字符串并输出 */
 sds getAllClientsInfoString(void) {
     listNode *ln;
     listIter li;
     redisClient *client;
     sds o = sdsempty();
-
+	
+	//字符串重新调整空间
     o = sdsMakeRoomFor(o,200*listLength(server.clients));
     listRewind(server.clients,&li);
     while ((ln = listNext(&li)) != NULL) {
         client = listNodeValue(ln);
         o = catClientInfoString(o,client);
+        //获取一个Client的属性信息，调用cat连接操作
         o = sdscatlen(o,"\n",1);
     }
     return o;
 }
 
+/* 执行客户端的命令的作法 */
 void clientCommand(redisClient *c) {
     listNode *ln;
     listIter li;
     redisClient *client;
 
+	//对客户端的命令进行解析对比
     if (!strcasecmp(c->argv[1]->ptr,"list") && c->argc == 2) {
         /* CLIENT LIST */
         sds o = getAllClientsInfoString();
@@ -1485,6 +1503,7 @@ void clientCommand(redisClient *c) {
                         return;
                     }
                 } else {
+                	//将反馈结果输出到c->reply中
                     addReply(c,shared.syntaxerr);
                     return;
                 }
@@ -1497,6 +1516,7 @@ void clientCommand(redisClient *c) {
 
         /* Iterate clients killing all the matching clients. */
         listRewind(server.clients,&li);
+        //逐个kill Client
         while ((ln = listNext(&li)) != NULL) {
             client = listNodeValue(ln);
             if (addr && strcmp(getClientPeerId(client),addr) != 0) continue;
@@ -1558,6 +1578,7 @@ void clientCommand(redisClient *c) {
         addReply(c,shared.ok);
     } else if (!strcasecmp(c->argv[1]->ptr,"getname") && c->argc == 2) {
         if (c->name)
+        	//获取客户端的name，属性
             addReplyBulk(c,c->name);
         else
             addReply(c,shared.nullbulk);
@@ -1569,6 +1590,7 @@ void clientCommand(redisClient *c) {
 /* Rewrite the command vector of the client. All the new objects ref count
  * is incremented. The old command vector is freed, and the old objects
  * ref count is decremented. */
+/* 重写客户端的命令集合，旧的命令集合的应用计数减1，新的Command  Vector的命令集合增1 */
 void rewriteClientCommandVector(redisClient *c, int argc, ...) {
     va_list ap;
     int j;
@@ -1580,7 +1602,9 @@ void rewriteClientCommandVector(redisClient *c, int argc, ...) {
         robj *a;
 
         a = va_arg(ap, robj*);
+        //从变长参数中获取robj
         argv[j] = a;
+        //增加引用计数
         incrRefCount(a);
     }
     /* We free the objects in the original vector at the end, so we are
@@ -1598,12 +1622,14 @@ void rewriteClientCommandVector(redisClient *c, int argc, ...) {
 
 /* Rewrite a single item in the command vector.
  * The new val ref count is incremented, and the old decremented. */
+/* 重写Client中的第i个参数 */
 void rewriteClientCommandArgument(redisClient *c, int i, robj *newval) {
     robj *oldval;
 
     redisAssertWithInfo(c,NULL,i < c->argc);
     oldval = c->argv[i];
     c->argv[i] = newval;
+    //对象的引用计数的改变
     incrRefCount(newval);
     decrRefCount(oldval);
 
@@ -1627,6 +1653,7 @@ void rewriteClientCommandArgument(redisClient *c, int i, robj *newval) {
  * Note: this function is very fast so can be called as many time as
  * the caller wishes. The main usage of this function currently is
  * enforcing the client output length limits. */
+/* 获取Client中已经用去的输出buffer的大小 */
 unsigned long getClientOutputBufferMemoryUsage(redisClient *c) {
     unsigned long list_item_size = sizeof(listNode)+sizeof(robj);
 
@@ -1649,6 +1676,7 @@ int getClientType(redisClient *c) {
     return REDIS_CLIENT_TYPE_NORMAL;
 }
 
+/* Client中的名字的3种类型，normal,slave，pubsub */
 int getClientTypeByName(char *name) {
     if (!strcasecmp(name,"normal")) return REDIS_CLIENT_TYPE_NORMAL;
     else if (!strcasecmp(name,"slave")) return REDIS_CLIENT_TYPE_SLAVE;
@@ -1671,27 +1699,34 @@ char *getClientTypeName(int class) {
  *
  * Return value: non-zero if the client reached the soft or the hard limit.
  *               Otherwise zero is returned. */
+/* 判断Clint的输出缓冲区的已经占用大小是否超过软限制或是硬限制 */
 int checkClientOutputBufferLimits(redisClient *c) {
     int soft = 0, hard = 0, class;
+    //算出Client已经占用的大小
     unsigned long used_mem = getClientOutputBufferMemoryUsage(c);
 
     class = getClientType(c);
+    //比较Client的hard limit的限制大小
     if (server.client_obuf_limits[class].hard_limit_bytes &&
         used_mem >= server.client_obuf_limits[class].hard_limit_bytes)
         hard = 1;
+    //比较Client的Soft limit的限制大小
     if (server.client_obuf_limits[class].soft_limit_bytes &&
         used_mem >= server.client_obuf_limits[class].soft_limit_bytes)
         soft = 1;
 
     /* We need to check if the soft limit is reached continuously for the
      * specified amount of seconds. */
+    
     if (soft) {
         if (c->obuf_soft_limit_reached_time == 0) {
+        	//当到达soft的限制之后，记录此时的时间，并重新标记soft为0
             c->obuf_soft_limit_reached_time = server.unixtime;
             soft = 0; /* First time we see the soft limit reached */
         } else {
             time_t elapsed = server.unixtime - c->obuf_soft_limit_reached_time;
-
+			
+			//间隔soft的时间再次检测时间
             if (elapsed <=
                 server.client_obuf_limits[class].soft_limit_seconds) {
                 soft = 0; /* The client still did not reached the max number of
@@ -1712,6 +1747,7 @@ int checkClientOutputBufferLimits(redisClient *c) {
  * Note: we need to close the client asynchronously because this function is
  * called from contexts where the client can't be freed safely, i.e. from the
  * lower level functions pushing data inside the client output buffers. */
+/* 异步的关闭Client，如果缓冲区中的软限制或是硬限制已经到达的时候，缓冲区超出限制的结果会导致释放不安全， */
 void asyncCloseClientOnOutputBufferLimitReached(redisClient *c) {
     redisAssert(c->reply_bytes < ULONG_MAX-(1024*64));
     if (c->reply_bytes == 0 || c->flags & REDIS_CLOSE_ASAP) return;
@@ -1724,8 +1760,9 @@ void asyncCloseClientOnOutputBufferLimitReached(redisClient *c) {
     }
 }
 
-/* Helper function used by freeMemoryIfNeeded() in order to flush slaves
+/* Helper function used by freeMemoryIfNeeded() in order to flush slave
  * output buffers without returning control to the event loop. */
+/* 从方法将会在freeMemoryIfNeeded()，释放内存空间函数，将存在内存中数据操作结果刷新到磁盘中 */
 void flushSlavesOutputBuffers(void) {
     listIter li;
     listNode *ln;
@@ -1740,6 +1777,7 @@ void flushSlavesOutputBuffers(void) {
             slave->replstate == REDIS_REPL_ONLINE &&
             listLength(slave->reply))
         {
+        	//在这里调用了write的方法
             sendReplyToClient(server.el,slave->fd,slave,0);
         }
     }
