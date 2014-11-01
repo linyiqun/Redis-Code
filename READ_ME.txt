@@ -64,7 +64,7 @@ net:（网络）
 
 wrapper:（封装类）
 1.bio.c background I/O的意思，开启后台线程用的
-2.hyperloglog.c 一种日志类型的
+2.hyperloglog.c 一种用于大数据处理的，基数统计算法
 3.intset.c  整数范围内的使用set，并包含相关set操作。
 4.latency.c 延迟类
 5.migrate.c 命令迁移类，包括命令的还原迁移等
@@ -73,7 +73,7 @@ wrapper:（封装类）
 8.pqsort.c  排序算法类
 9.pubsub.c 用于订阅模式的实现，有点类似于Client广播发送的方式。
 10.rio.c redis定义的一个I/O类
-11.slowlog.c 一种日志类型的，与hyperloglog.c类似
+11.slowlog.c 一种日志类型的，记录超时查询记录
 12.sort.c 排序算法类，与pqsort.c使用的场景不同
 13.syncio.c 用于同步Socket和文件I/O操作。
 14.zmalloc.c 关于Redis的内存分配的封装实现
