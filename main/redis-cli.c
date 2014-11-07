@@ -106,30 +106,30 @@ char *redisGitSHA1(void);
 char *redisGitDirty(void);
 
 /* Utility functions  通用方法 */
-static long long ustime(void)
-static long long mstime(void)
-static void cliRefreshPrompt(void)
-static sds cliVersion(void)
-static void cliInitHelp(void)
+static long long ustime(void) /* 获取当前的时间，微秒为单位 */
+static long long mstime(void) /* 获取当前的时间，单位为毫秒 */
+static void cliRefreshPrompt(void) /* 客户端刷新提示 */
+static sds cliVersion(void) /* 输出客户端的版本号 */
+static void cliInitHelp(void) /* 初始化帮助命令操作，分为初始化帮助命令和初始化帮助命令组（后可附带参数的） */
 static void cliOutputCommandHelp(struct commandHelp *help, int group)
 static void cliOutputGenericHelp(void)
 static void cliOutputHelp(int argc, char **argv)
 static void completionCallback(const char *buf, linenoiseCompletions *lc)
-static int cliAuth()
-static int cliSelect()
-static int cliConnect(int force)
+static int cliAuth()  /* 发送Auth验证命令给服务端 */
+static int cliSelect() /* 发送选择db的id号给服务端 */
+static int cliConnect(int force) /* 命令行客户端的连接操作 */
 static void cliPrintContextError(void)
-static sds cliFormatReplyTTY(redisReply *r, char *prefix)
+static sds cliFormatReplyTTY(redisReply *r, char *prefix) /* 收到的客户端的回复操作做格式化处理 */
 static sds cliFormatReplyRaw(redisReply *r)
 static sds cliFormatReplyCSV(redisReply *r)
 static int cliReadReply(int output_raw_strings)
-static int cliSendCommand(int argc, char **argv, int repeat)
+static int cliSendCommand(int argc, char **argv, int repeat) /* 客户端发送命令，就是直接更改config上的属性信息 */
 static redisReply *reconnectingInfo(void)
 	
 /* User interface 用户接口*/
-static int parseOptions(int argc, char **argv)
+static int parseOptions(int argc, char **argv) /* 解析参数到config命令中 */
 static sds readArgFromStdin(void)
-static void usage(void)
+static void usage(void) /* 帮助命令的输出文档 */
 static char **convertToSds(int count, char** args)
 static void repl(void)
 static int noninteractive(int argc, char **argv)
@@ -138,14 +138,14 @@ static int noninteractive(int argc, char **argv)
 static int evalMode(int argc, char **argv)
 	
 /* Latency and latency history modes 延时模式*/
-static void latencyMode(void)
+static void latencyMode(void) /* 隔固定时间用PING命令测网络延时情况 */
 
 /* Slave mode */
 unsigned long long sendSync(int fd)
 static void slaveMode(void)
 
 /* RDB transfer mode */
-static void getRDB(void)
+static void getRDB(void) /* 从远程服务端获取rdb数据文件 */
 
 /* Bulk import (pipe) mode */
 static void pipeMode(void)
@@ -159,26 +159,27 @@ static void getKeySizes(redisReply *keys, int *types, unsigned long long *sizes)
 static void findBigKeys(void)
 	
 /* Stats mode */
-static char *getInfoField(char *info, char *field)
+static char *getInfoField(char *info, char *field) /* 从info中找出特定域的信息 */
 static long getLongInfoField(char *info, char *field)
 void bytesToHuman(char *s, long long n)
-static void statMode(void)
+static void statMode(void) /* statMode主要输出一些读取数据统计的一些信息 */
 	
 /* Scan mode */
 static void scanMode(void)
 
 /* Intrisic latency mode*/
-unsigned long compute_something_fast(void)
+unsigned long compute_something_fast(void) /* 普通的计算操作，测试硬件计算的速度快慢 */
 static void intrinsicLatencyModeStop(int s)
 static void intrinsicLatencyMode(void)
 
 /* Program main() */
-int main(int argc, char **argv)
+int main(int argc, char **argv) /*main函数主程序操作*/
 	
 /*------------------------------------------------------------------------------
  * Utility functions
  *--------------------------------------------------------------------------- */
  
+/* 获取当前的时间，微秒为单位 */
 static long long ustime(void) {
     struct timeval tv;
     long long ust;
@@ -189,10 +190,12 @@ static long long ustime(void) {
     return ust;
 }
 
+/* 获取当前的时间，单位为毫秒 */
 static long long mstime(void) {
     return ustime()/1000;
 }
 
+/* 客户端刷新提示 */
 static void cliRefreshPrompt(void) {
     int len;
 
@@ -230,6 +233,7 @@ typedef struct {
 static helpEntry *helpEntries;
 static int helpEntriesLen;
 
+/* 输出客户端的版本号 */
 static sds cliVersion(void) {
     sds version;
     version = sdscatprintf(sdsempty(), "%s", REDIS_VERSION);
@@ -244,6 +248,7 @@ static sds cliVersion(void) {
     return version;
 }
 
+/* 初始化帮助命令操作，分为初始化帮助命令和初始化帮助命令组（后可附带参数的） */
 static void cliInitHelp(void) {
     int commandslen = sizeof(commandHelp)/sizeof(struct commandHelp);
     int groupslen = sizeof(commandGroups)/sizeof(char*);
@@ -374,10 +379,12 @@ static void completionCallback(const char *buf, linenoiseCompletions *lc) {
  *--------------------------------------------------------------------------- */
 
 /* Send AUTH command to the server */
+/* 发送Auth验证命令给服务端 */
 static int cliAuth() {
     redisReply *reply;
     if (config.auth == NULL) return REDIS_OK;
-
+	
+	//构造redis命令
     reply = redisCommand(context,"AUTH %s",config.auth);
     if (reply != NULL) {
         freeReplyObject(reply);
@@ -387,6 +394,7 @@ static int cliAuth() {
 }
 
 /* Send SELECT dbnum to the server */
+/* 发送选择db的id号给服务端 */
 static int cliSelect() {
     redisReply *reply;
     if (config.dbnum == 0) return REDIS_OK;
@@ -403,11 +411,13 @@ static int cliSelect() {
 
 /* Connect to the server. If force is not zero the connection is performed
  * even if there is already a connected socket. */
+/* 命令行客户端的连接操作 */
 static int cliConnect(int force) {
     if (context == NULL || force) {
         if (context != NULL)
             redisFree(context);
-
+		
+		//判断是否为本地连接还是连上其他的机子
         if (config.hostsocket == NULL) {
             context = redisConnect(config.hostip,config.hostport);
         } else {
@@ -432,6 +442,7 @@ static int cliConnect(int force) {
         anetKeepAlive(NULL, context->fd, REDIS_CLI_KEEPALIVE_INTERVAL);
 
         /* Do AUTH and select the right DB. */
+        //连接完成后，执行验证操作和选择对应的数据库
         if (cliAuth() != REDIS_OK)
             return REDIS_ERR;
         if (cliSelect() != REDIS_OK)
@@ -445,6 +456,7 @@ static void cliPrintContextError(void) {
     fprintf(stderr,"Error: %s\n",context->errstr);
 }
 
+/* 收到的客户端的回复操作做格式化处理 */
 static sds cliFormatReplyTTY(redisReply *r, char *prefix) {
     sds out = sdsempty();
     switch (r->type) {
@@ -660,6 +672,7 @@ static int cliReadReply(int output_raw_strings) {
     return REDIS_OK;
 }
 
+/* 客户端发送命令，就是直接更改config上的属性信息 */
 static int cliSendCommand(int argc, char **argv, int repeat) {
     char *command = argv[0];
     size_t *argvlen;
@@ -776,6 +789,7 @@ static redisReply *reconnectingInfo(void) {
  * User interface
  *--------------------------------------------------------------------------- */
 
+/* 解析参数到config命令中 */
 static int parseOptions(int argc, char **argv) {
     int i;
 
@@ -879,6 +893,7 @@ static sds readArgFromStdin(void) {
     return arg;
 }
 
+/* 帮助命令的输出文档 */
 static void usage(void) {
     sds version = cliVersion();
     fprintf(stderr,
@@ -1099,6 +1114,7 @@ static int evalMode(int argc, char **argv) {
 
 #define LATENCY_SAMPLE_RATE 10 /* milliseconds. */
 #define LATENCY_HISTORY_DEFAULT_INTERVAL 15000 /* milliseconds. */
+/* 隔固定时间用PING命令测网络延时情况 */
 static void latencyMode(void) {
     redisReply *reply;
     long long start, latency, min = 0, max = 0, tot = 0, count = 0;
@@ -1214,6 +1230,7 @@ static void slaveMode(void) {
 
 /* This function implements --rdb, so it uses the replication protocol in order
  * to fetch the RDB file from a remote server. */
+/* 从远程服务端获取rdb数据文件 */
 static void getRDB(void) {
     int s = context->fd;
     int fd;
@@ -1227,6 +1244,7 @@ static void getRDB(void) {
     if (!strcmp(config.rdb_filename,"-")) {
         fd = STDOUT_FILENO;
     } else {
+    	//打开远程的rdb目录
         fd = open(config.rdb_filename, O_CREAT|O_WRONLY, 0644);
         if (fd == -1) {
             fprintf(stderr, "Error opening '%s': %s\n", config.rdb_filename,
@@ -1237,12 +1255,13 @@ static void getRDB(void) {
 
     while(payload) {
         ssize_t nread, nwritten;
-
+		//读取是否存在数据
         nread = read(s,buf,(payload > sizeof(buf)) ? sizeof(buf) : payload);
         if (nread <= 0) {
             fprintf(stderr,"I/O Error reading RDB payload from socket\n");
             exit(1);
         }
+        //有数据了，在写入buf
         nwritten = write(fd, buf, nread);
         if (nwritten != nread) {
             fprintf(stderr,"Error writing data to file: %s\n",
@@ -1697,6 +1716,7 @@ static void findBigKeys(void) {
 /* Return the specified INFO field from the INFO command output "info".
  * A new buffer is allocated for the result, that needs to be free'd.
  * If the field is not found NULL is returned. */
+/* 从info中找出特定域的信息 */
 static char *getInfoField(char *info, char *field) {
     char *p = strstr(info,field);
     char *n1, *n2;
@@ -1751,6 +1771,7 @@ void bytesToHuman(char *s, long long n) {
     }
 }
 
+/* statMode主要输出一些读取数据统计的一些信息 */
 static void statMode(void) {
     redisReply *reply;
     long aux, requests = 0;
@@ -1843,6 +1864,7 @@ static void scanMode(void) {
 
     do {
         if (config.pattern)
+        	//发送扫描模式命令
             reply = redisCommand(context,"SCAN %llu MATCH %s",
                 cur,config.pattern);
         else
@@ -1877,6 +1899,7 @@ static void scanMode(void) {
 /* This is just some computation the compiler can't optimize out.
  * Should run in less than 100-200 microseconds even using very
  * slow hardware. Runs in less than 10 microseconds in modern HW. */
+/* 普通的计算操作，测试硬件计算的速度快慢 */
 unsigned long compute_something_fast(void) {
     unsigned char s[256], i, j, t;
     int count = 1000, k;
@@ -1943,9 +1966,11 @@ static void intrinsicLatencyMode(void) {
  * Program main()
  *--------------------------------------------------------------------------- */
 
+/*main函数主程序操作*/
 int main(int argc, char **argv) {
     int firstarg;
-
+	
+	//首先初始化客户端配置操作
     config.hostip = sdsnew("127.0.0.1");
     config.hostport = 6379;
     config.hostsocket = NULL;
@@ -1980,11 +2005,13 @@ int main(int argc, char **argv) {
         config.output = OUTPUT_STANDARD;
     config.mb_delim = sdsnew("\n");
     cliInitHelp();
-
+	
+	//根据用户输入的参数，配置config
     firstarg = parseOptions(argc,argv);
     argc -= firstarg;
     argv += firstarg;
 
+	//配置设置完毕，根据配置中的模式设置，调用相应的mode方法
     /* Latency mode */
     if (config.latency_mode) {
         if (cliConnect(0) == REDIS_ERR) exit(1);
