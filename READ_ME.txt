@@ -84,3 +84,16 @@ others:（存放了一些我暂时还不是很清楚的类,所以没有解释了）
 2.setproctitle.c
 3.valgrind.sh
 4.redisassert.h
+
+Redis中的11大优秀设计:
+1.hyperloglog基量统计算法的实现(http://blog.csdn.net/androidlushangderen/article/details/40683763)
+2.zmalloc内存分配的重新实现(http://blog.csdn.net/androidlushangderen/article/details/40659331)
+3.multi事务操作(http://blog.csdn.net/androidlushangderen/article/details/40392209)
+4.redis-benchmark性能测试(http://blog.csdn.net/androidlushangderen/article/details/40211907)
+5.zipmap压缩结构的设计(http://blog.csdn.net/androidlushangderen/article/details/39994599)
+6.sparkline微线图的重新设计(http://blog.csdn.net/androidlushangderen/article/details/39964591)
+7.对象引用计数实现内存管理(http://blog.csdn.net/androidlushangderen/article/details/40716469)
+8.fork子进程实现后台程序(http://blog.csdn.net/androidlushangderen/article/details/40266579)
+9.long long 类型转为String类型方法(http://blog.csdn.net/androidlushangderen/article/details/40649623)
+10.正则表达式的实现算法(http://blog.csdn.net/androidlushangderen/article/details/40649623)
+11.Redis的drand48()随机算法重实现(http://blog.csdn.net/androidlushangderen/article/details/40582189)
